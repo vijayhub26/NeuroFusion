@@ -1,53 +1,108 @@
 # Cross-Modal Attention Fusion for Brain Tumor Analysis
 
-End-to-end architecture combining cross-modal attention fusion, conditional modality synthesis, and joint segmentation/classification for brain tumor MRI analysis.
+**End-to-end PyTorch implementation** combining cross-modal attention fusion, conditional diffusion-based modality synthesis, and joint segmentation/classification for brain tumor MRI analysis.
 
-## Novel Contributions
+## 🔬 Novel Contributions
 
-- **Cross-modal attention fusion** to process any subset of MRI modalities (T1/T2/FLAIR)
-- **Conditional diffusion-based synthesis** for missing modalities with uncertainty quantification
-- **Joint segmentation + classification** with losses that prevent overreliance on synthetic content
-- **End-to-end trainable** - no sequential/two-stage pipelines
+1. **Cross-modal attention fusion** - Processes any subset of MRI modalities (T1/T1ce/T2/FLAIR)
+2. **Conditional diffusion synthesis** - Generates missing modalities using DDPM/DDIM with uncertainty quantification
+3. **Joint segmentation + classification** - Tumor masks + grade (LGG/HGG) in one model
+4. **Synthetic content penalty** - Prevents overreliance on synthesized modalities
 
-## Branch Strategy
+Unlike existing approaches that use sequential pipelines, this architecture performs **end-to-end joint training**.
 
-This repository uses multiple branches to experiment with different architectural choices:
+## 🏗️ Architecture
 
-- `main` - Stable baseline and documentation
-- `feature/diffusion-synthesis` - Conditional diffusion model for modality imputation
-- `feature/gan-synthesis` - GAN-based modality synthesis approach
-- `feature/3d-unet-backbone` - 3D U-Net as shared encoder
-- `feature/resnet-backbone` - 3D ResNet as shared encoder
-- `experiment/brats-dataset` - BraTS dataset integration
-- `experiment/multi-head-attention` - Different attention mechanisms
+```
+Input (Any subset of modalities) → Modality Encoders
+→ Missing Modality Synthesis (Diffusion + Uncertainty)
+→ Cross-Modal Attention Fusion → Shared Encoder
+├→ Segmentation → Tumor masks
+└→ Classification → Grade (LGG/HGG)
+```
 
-## Getting Started
+## 📦 Installation
 
 ```bash
-# Clone the repository
-git clone <your-repo-url>
 cd "antigravity works"
-
-# Create virtual environment
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
+venv\Scripts\activate  # Windows
 pip install -r requirements.txt
 ```
 
-## Project Structure
+## 📊 Dataset (BraTS Format)
 
 ```
-.
-├── data/              # Data loading and preprocessing
-├── models/            # Architecture components
-├── losses/            # Loss functions
-├── train.py           # Training script
-├── evaluate.py        # Evaluation script
-└── configs/           # Experiment configurations
+data/BraTS/
+├── train/Patient001/
+│   ├── Patient001_t1.nii.gz
+│   ├── Patient001_t1ce.nii.gz
+│   ├── Patient001_t2.nii.gz
+│   ├── Patient001_flair.nii.gz
+│   ├── Patient001_seg.nii.gz
+│   └── grade.txt  # "LGG" or "HGG"
+├── val/
+└── test/
 ```
 
-## Usage
+## 🚀 Usage
 
-See individual branches for specific implementations.
+**Training:**
+```bash
+python train.py
+```
+
+**Evaluation:**
+```bash
+python evaluate.py
+```
+
+## 📁 Structure
+
+```
+├── config.py           # Hyperparameters
+├── train.py            # Training (PyTorch Lightning)
+├── evaluate.py         # Missing modality evaluation
+├── data/
+│   ├── dataset.py      # BraTS dataloader
+│   └── __init__.py
+├── models/
+│   ├── encoders.py     # Modality + shared encoders
+│   ├── attention_fusion.py  # Cross-modal fusion
+│   ├── synthesis.py    # Conditional diffusion
+│   ├── segmentation.py # Decoder
+│   ├── classification.py    # Grade classifier
+│   ├── unified_model.py     # End-to-end model
+│   └── __init__.py
+├── losses/
+│   ├── combined_loss.py     # Multi-task loss
+│   └── __init__.py
+└── utils/
+    ├── metrics.py      # Dice, HD95, accuracy
+    └── __init__.py
+```
+
+## 🎯 Key Features
+
+- **Modality Encoders**: Lightweight 3D CNNs per modality
+- **Diffusion Synthesis**: DDPM with DDIM sampling (50 steps)
+- **Uncertainty**: Pixel-wise variance from multiple samples
+- **Fusion**: Attention with uncertainty-aware gating
+- **Losses**: Dice + CE (seg) + Focal (cls) + MSE (synthesis) + uncertainty + attention penalties
+- **Metrics**: Dice, HD95, accuracy, precision, recall, F1
+
+## 🔧 Configuration
+
+Edit `config.py` to modify:
+- Loss weights (λ_seg, λ_cls, λ_synthesis, etc.)
+- Diffusion parameters (steps, beta schedule)
+- Model dimensions (channels, heads, fusion_dim)
+- Training hyperparameters (LR, epochs, batch size)
+
+## 🧪 Branching Strategy (Future)
+
+When ready to experiment, create branches for:
+- `feature/gan-synthesis` - Replace diffusion with GAN
+- `feature/transformer-fusion` - Replace attention with transformers
+- `experiment/loss-ablation` - Test different loss weights
+- `baseline/two-stage` - Compare against sequential pipeline
