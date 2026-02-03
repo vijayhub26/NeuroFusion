@@ -83,6 +83,10 @@ class FocalLoss(nn.Module):
         Returns:
             Focal loss
         """
+        # Clip targets to valid range
+        num_classes = predictions.shape[-1]
+        targets = torch.clamp(targets.long(), 0, num_classes - 1)
+
         ce_loss = F.cross_entropy(predictions, targets, reduction='none')
         pt = torch.exp(-ce_loss)
         focal_loss = self.alpha * (1 - pt) ** self.gamma * ce_loss
