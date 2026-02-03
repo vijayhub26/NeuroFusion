@@ -6,7 +6,7 @@ Includes segmentation, classification, synthesis, and regularization losses.
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 
 class DiceLoss(nn.Module):

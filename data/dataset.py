@@ -82,15 +82,25 @@ class BraTSDataset(Dataset):
             if not os.path.isdir(patient_path):
                 continue
             
+            # Check for seg file with both extensions
+            seg_path = os.path.join(patient_path, f"{patient_dir}_seg.nii.gz")
+            if not os.path.exists(seg_path):
+                seg_path = os.path.join(patient_path, f"{patient_dir}_seg.nii")
+            
             sample = {
                 "patient_id": patient_dir,
                 "modalities": {},
-                "seg": os.path.join(patient_path, f"{patient_dir}_seg.nii.gz")
+                "seg": seg_path
             }
             
-            # Load modality paths
+            # Load modality paths (check both .nii.gz and .nii)
             for mod in self.modalities:
+                # Try .nii.gz first
                 mod_path = os.path.join(patient_path, f"{patient_dir}_{mod}.nii.gz")
+                if not os.path.exists(mod_path):
+                    # Try .nii
+                    mod_path = os.path.join(patient_path, f"{patient_dir}_{mod}.nii")
+                
                 if os.path.exists(mod_path):
                     sample["modalities"][mod] = mod_path
             
@@ -232,7 +242,9 @@ class BraTSDataset(Dataset):
 
 
 def get_brats_dataloaders(
-    data_root: str,
+    data_root: str = None,
+    train_dir: str = None,
+    val_dir: str = None,
     batch_size: int = 2,
     num_workers: int = 4,
     **kwargs
@@ -241,25 +253,35 @@ def get_brats_dataloaders(
     Create train and validation dataloaders for BraTS.
     
     Args:
-        data_root: Root directory (should contain 'train' and 'val' subdirs)
+        data_root: Root directory (will use data_root/train and data_root/val if train_dir/val_dir not specified)
+        train_dir: Direct path to training data directory
+        val_dir: Direct path to validation data directory
         batch_size: Batch size
         num_workers: Number of data loading workers
-        **kwargs: Additional arguments for BraTSDataset
+        **kwargs: Additional arguments for BraTSDataset (modalities, image_size, etc.)
     
     Returns:
         train_loader, val_loader
     """
+    # Determine directories
+    if train_dir is None:
+        train_dir = os.path.join(data_root, "train")
+    if val_dir is None:
+        val_dir = os.path.join(data_root, "val")
+    
     train_dataset = BraTSDataset(
-        data_root=os.path.join(data_root, "train"),
+        data_root=train_dir,
         is_training=True,
         **kwargs
     )
     
+    # Remove missing_prob for validation
+    val_kwargs = {k: v for k, v in kwargs.items() if k != 'missing_prob'}
     val_dataset = BraTSDataset(
-        data_root=os.path.join(data_root, "val"),
+        data_root=val_dir,
         is_training=False,
         missing_prob=0.0,  # No masking during validation
-        **kwargs
+        **val_kwargs
     )
     
     train_loader = torch.utils.data.DataLoader(

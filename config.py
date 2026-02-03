@@ -9,18 +9,18 @@ from typing import List, Tuple
 @dataclass
 class DataConfig:
     """Dataset and data loading configuration."""
-    # BraTS dataset paths
-    data_root: str = "data/BraTS"
-    train_dir: str = "data/BraTS/train"
-    val_dir: str = "data/BraTS/val"
-    test_dir: str = "data/BraTS/test"
+    # BraTS dataset paths (split from training data)
+    data_root: str = r"C:\datasets\MRI Data\BraTS2020_Split"
+    train_dir: str = r"C:\datasets\MRI Data\BraTS2020_Split\train"
+    val_dir: str = r"C:\datasets\MRI Data\BraTS2020_Split\val"
+    test_dir: str = r"C:\datasets\MRI Data\BraTS2020_Split\test"
     
     # Modalities
     modalities: List[str] = None
     num_modalities: int = 4  # T1, T1ce, T2, FLAIR
     
-    # Data dimensions
-    image_size: Tuple[int, int, int] = (128, 128, 128)  # (D, H, W)
+    # Data dimensions (optimized for speed)
+    image_size: Tuple[int, int, int] = (96, 96, 96)  # (D, H, W) - reduced from 128
     num_classes: int = 4  # background, necrosis, edema, enhancing tumor
     
     # Classification
@@ -52,12 +52,12 @@ class ModelConfig:
     # Shared encoder backbone (3D U-Net)
     backbone_channels: List[int] = None
     
-    # Diffusion synthesis
-    diffusion_steps: int = 1000
+    # Diffusion synthesis (optimized for speed)
+    diffusion_steps: int = 100  # Reduced from 1000 for faster training
     diffusion_beta_start: float = 0.0001
     diffusion_beta_end: float = 0.02
     diffusion_schedule: str = "linear"  # or "cosine"
-    num_inference_samples: int = 5  # For uncertainty quantification
+    num_inference_samples: int = 1  # For uncertainty quantification (reduced from 5)
     
     # Segmentation decoder
     decoder_channels: List[int] = None
