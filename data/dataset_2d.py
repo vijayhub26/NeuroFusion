@@ -161,6 +161,9 @@ class BraTSDataset2D(Dataset):
         # Load segmentation
         if sample["seg"]:
             seg_volume = nib.load(sample["seg"]).get_fdata().astype(np.int64)
+            # BraTS labels: 0=background, 1=necrosis, 2=edema, 4=enhancing
+            # Remap 4 -> 3 for num_classes=4 (0, 1, 2, 3)
+            seg_volume[seg_volume == 4] = 3
         else:
             # Create dummy seg if missing
             first_mod = list(volumes.values())[0]

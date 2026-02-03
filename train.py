@@ -56,6 +56,14 @@ class BrainTumorLightningModule(pl.LightningModule):
         # Expand grade for all slices
         grade_targets_expanded = grade_targets.repeat(num_slices * batch_size)
         
+        # Debug: Print shapes and values
+        if batch_idx == 0:
+            print(f"\n[DEBUG] Batch {batch_idx}:")
+            print(f"  grade_logits shape: {outputs['grade_logits'].shape}")
+            print(f"  grade_targets_expanded shape: {grade_targets_expanded.shape}")
+            print(f"  grade_targets values: {grade_targets_expanded[:5]}")
+            print(f"  grade_logits num_classes: {outputs['grade_logits'].shape[-1]}")
+        
         # Compute loss
         total_loss, loss_dict = self.criterion(
             outputs, seg_targets, grade_targets_expanded, modalities, modality_mask
