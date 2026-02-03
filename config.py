@@ -19,8 +19,10 @@ class DataConfig:
     modalities: List[str] = None
     num_modalities: int = 4  # T1, T1ce, T2, FLAIR
     
-    # Data dimensions (further reduced for memory constraints)
-    image_size: Tuple[int, int, int] = (48, 48, 48)  # (D, H, W) - reduced to fit in 16GB RAM
+    # Data dimensions (2D slices for memory efficiency)
+    image_size: Tuple[int, int] = (128, 128)  # (H, W) - 2D slices
+    use_2d_slices: bool = True  # Process 2D slices instead of 3D volumes
+    num_slices_per_scan: int = 5  # Sample N slices per 3D scan during training
     num_classes: int = 4  # background, necrosis, edema, enhancing tumor
     
     # Classification
