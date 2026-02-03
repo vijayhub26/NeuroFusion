@@ -146,9 +146,9 @@ def main():
     # Trainer
     trainer = pl.Trainer(
         max_epochs=50,
-        accelerator="cpu", # Force CPU for now as requested
+        accelerator="gpu", # Switch to GPU
         devices=1,
-        precision="bf16-mixed", # Faster on CPU
+        precision="16-mixed", # Efficient on GPU
         logger=logger,
         callbacks=[checkpoint_callback],
         log_every_n_steps=10

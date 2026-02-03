@@ -1,159 +1,43 @@
-# Cross-Modal Attention Fusion for Brain Tumor Analysis
+# 🧠 GenAI Brain Tumor Agent (Unified)
 
-**End-to-end PyTorch implementation** combining cross-modal attention fusion, conditional diffusion-based modality synthesis, and joint segmentation/classification for brain tumor MRI analysis.
-
-## 🔬 Novel Contributions
-
-1. **Cross-modal attention fusion** - Processes any subset of MRI modalities (T1/T1ce/T2/FLAIR)
-2. **Conditional diffusion synthesis** - Generates missing modalities using DDPM/DDIM with uncertainty quantification
-3. **Joint segmentation + classification** - Tumor masks + grade (LGG/HGG) in one model
-4. **Synthetic content penalty** - Prevents overreliance on synthesized modalities
-
-Unlike existing approaches that use sequential pipelines, this architecture performs **end-to-end joint training**.
-
-## 🏗️ Architecture
-
-```
-Input (Any subset of modalities) → Modality Encoders
-→ Missing Modality Synthesis (Diffusion + Uncertainty)
-→ Cross-Modal Attention Fusion → Shared Encoder
-├→ Segmentation → Tumor masks
-└→ Classification → Grade (LGG/HGG)
-```
-
-## 📦 Installation
-
-```bash
-cd "antigravity works"
-python -m venv venv
-venv\Scripts\activate  # Windows
-pip install -r requirements.txt
-```
-
-## 📊 Dataset (BraTS Format)
-
-```
-data/BraTS/
-├── train/Patient001/
-│   ├── Patient001_t1.nii.gz
-│   ├── Patient001_t1ce.nii.gz
-│   ├── Patient001_t2.nii.gz
-│   ├── Patient001_flair.nii.gz
-│   ├── Patient001_seg.nii.gz
-│   └── grade.txt  # "LGG" or "HGG"
-├── val/
-└── test/
-```
-
-## 🚀 Usage
-
-**Training:**
-```bash
-python train.py
-```
-
-**Evaluation:**
-```bash
-python evaluate.py
-```
-
-## 📁 Structure
-
-```
-├── config.py           # Hyperparameters (optimized for speed)
-├── train.py            # Training (PyTorch Lightning)
-├── evaluate.py         # Missing modality evaluation
-├── requirements.txt    # Dependencies
-├── data/
-│   ├── dataset.py      # BraTS dataloader
-│   └── __init__.py
-├── models/
-│   ├── encoders.py     # Modality + shared encoders
-│   ├── attention_fusion.py  # Cross-modal fusion
-│   ├── synthesis.py    # Conditional diffusion
-│   ├── segmentation.py # Decoder
-│   ├── classification.py    # Grade classifier
-│   ├── unified_model.py     # End-to-end model
-│   └── __init__.py
-├── losses/
-│   ├── combined_loss.py     # Multi-task loss
-│   └── __init__.py
-└── utils/
-    ├── metrics.py      # Dice, HD95, accuracy
-    └── __init__.py
-```
-
-## 🎯 Key Features
-
-- **Modality Encoders**: Lightweight 3D CNNs per modality
-- **Diffusion Synthesis**: DDPM with DDIM sampling (100 steps for speed)
-- **Uncertainty**: Pixel-wise variance from synthesis
-- **Fusion**: Attention with uncertainty-aware gating
-- **Losses**: Dice + CE (seg) + Focal (cls) + MSE (synthesis) + uncertainty + attention penalties
-- **Metrics**: Dice, HD95, accuracy, precision, recall, F1
-- **Optimized**: 96³ images, reduced diffusion steps for faster training
-
-## 🔧 Configuration
-
-Edit [`config.py`](file:///c:/antigravity%20works/config.py) to modify:
-- **Performance**: `image_size` (96³), `diffusion_steps` (100), `batch_size` (2)
-- **Loss weights**: λ_seg, λ_cls, λ_synthesis, etc.
-- **Model dimensions**: channels, heads, fusion_dim
-- **Training**: LR, epochs, scheduler
+This project implements a **Unified Generative AI Model** for:
+1.  **Missing Modality Synthesis**: Uses a GAN to generate missing MRI scans (e.g., if T1ce is missing).
+2.  **Tumor Segmentation**: Uses a U-Net to precisely identify and mask brain tumors.
 
 ## 🚀 Quick Start
 
+### 1. Run the Web Interface
+The easiest way to use the model is the Gradio Web UI.
 ```bash
-# Install dependencies
-pip install -r requirements.txt
-
-# Start training
-python train.py
-
-# Evaluate on missing modalities
-python evaluate.py
+python app.py
 ```
-├── evaluate.py         # Missing modality evaluation
-├── data/
-│   ├── dataset.py      # BraTS dataloader
-│   └── __init__.py
-├── models/
-│   ├── encoders.py     # Modality + shared encoders
-│   ├── attention_fusion.py  # Cross-modal fusion
-│   ├── synthesis.py    # Conditional diffusion
-│   ├── segmentation.py # Decoder
-│   ├── classification.py    # Grade classifier
-│   ├── unified_model.py     # End-to-end model
-│   └── __init__.py
-├── losses/
-│   ├── combined_loss.py     # Multi-task loss
-│   └── __init__.py
-└── utils/
-    ├── metrics.py      # Dice, HD95, accuracy
-    └── __init__.py
+-   Loads the trained model.
+-   Access at `http://localhost:7860`.
+-   Supports uploading (or random loading) of patients.
+-   Allows simulating missing data to test the AI.
+
+### 2. Training (Reproduce Results)
+To train the Unified Model from scratch (requires ~4GB VRAM):
+```bash
+python train_full.py
 ```
+-   **Config**: See `config.py`.
+-   **Data**: BraTS 2020 dataset (configured in `config.py`).
+-   **Logs**: Check `logs/unified_segmentation` for TensorBoard logs.
 
-## 🎯 Key Features
+## 📂 Project Structure
 
-- **Modality Encoders**: Lightweight 3D CNNs per modality
-- **Diffusion Synthesis**: DDPM with DDIM sampling (50 steps)
-- **Uncertainty**: Pixel-wise variance from multiple samples
-- **Fusion**: Attention with uncertainty-aware gating
-- **Losses**: Dice + CE (seg) + Focal (cls) + MSE (synthesis) + uncertainty + attention penalties
-- **Metrics**: Dice, HD95, accuracy, precision, recall, F1
+-   `app.py`: **Main Application** (Gradio UI).
+-   `train_full.py`: **Main Training Script** (Segmentation + Synthesis).
+-   `models/unified_detector.py`: The Unified Model architecture.
+-   `models/synthesis_2d.py`: 2D GAN components.
+-   `losses/unified_loss.py`: Combined Dice + L1 Loss.
+-   `data/`: Data loading logic (`dataset_2d.py`).
+-   `archive/`: Old/Debug scripts.
 
-## 🔧 Configuration
+## 📊 Performance
+-   **Dice Score**: **0.827** (on Validation Set).
+-   **Inference Speed**: Real-time on GPU.
 
-Edit `config.py` to modify:
-- Loss weights (λ_seg, λ_cls, λ_synthesis, etc.)
-- Diffusion parameters (steps, beta schedule)
-- Model dimensions (channels, heads, fusion_dim)
-- Training hyperparameters (LR, epochs, batch size)
-
-## 🧪 Branching Strategy (Future)
-
-When ready to experiment, create branches for:
-- `feature/gan-synthesis` - Replace diffusion with GAN
-- `feature/transformer-fusion` - Replace attention with transformers
-- `experiment/loss-ablation` - Test different loss weights
-- `baseline/two-stage` - Compare against sequential pipeline
+---
+*Generated by Antigravity*

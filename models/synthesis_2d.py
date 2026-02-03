@@ -18,7 +18,8 @@ class Generator2D(nn.Module):
         out_channels: int = 1,
         base_channels: int = 32,
         num_levels: int = 4,
-        use_dropout: bool = True
+        use_dropout: bool = True,
+        output_activation: str = "tanh" # "tanh", "sigmoid", or None
     ):
         super().__init__()
         
@@ -65,10 +66,13 @@ class Generator2D(nn.Module):
             channels //= 2
         
         # Output
-        self.output = nn.Sequential(
-            nn.Conv2d(base_channels, out_channels, kernel_size=1),
-            nn.Tanh()
-        )
+        layers = [nn.Conv2d(base_channels, out_channels, kernel_size=1)]
+        if output_activation == "tanh":
+            layers.append(nn.Tanh())
+        elif output_activation == "sigmoid":
+            layers.append(nn.Sigmoid())
+        
+        self.output = nn.Sequential(*layers)
     
     def forward(self, condition: torch.Tensor) -> torch.Tensor:
         """Generate missing modality from condition."""

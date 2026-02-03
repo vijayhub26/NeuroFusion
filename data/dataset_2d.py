@@ -209,6 +209,9 @@ class BraTSDataset2D(Dataset):
         modalities_tensor = torch.from_numpy(np.stack(modality_slices, axis=0)).float()
         seg_tensor = torch.from_numpy(np.stack(seg_slices, axis=0)).long()
         
+        # Keep copy of Ground Truth before masking
+        gt_modalities = modalities_tensor.clone()
+        
         # Simulate missing modalities
         modality_mask = torch.ones(len(self.modalities))
         if self.is_training and self.missing_prob > 0:
@@ -225,7 +228,8 @@ class BraTSDataset2D(Dataset):
         has_tumor = (seg_tensor.view(len(slice_indices), -1).max(dim=1)[0] > 0).float()
         
         return {
-            "modalities": modalities_tensor,  # (num_slices, 4, H, W)
+            "modalities": modalities_tensor,  # (num_slices, 4, H, W) [Masked]
+            "gt_modalities": gt_modalities,   # (num_slices, 4, H, W) [Ground Truth]
             "modality_mask": modality_mask,  # (4,)
             "seg": seg_tensor,  # (num_slices, H, W)
             "grade": grade,  # scalar (HGG vs LGG for patient)
