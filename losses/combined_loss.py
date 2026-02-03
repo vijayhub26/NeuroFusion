@@ -33,8 +33,17 @@ class DiceLoss(nn.Module):
         # Convert logits to probabilities
         probs = F.softmax(predictions, dim=1)
         
+        # Clip targets to valid range [0, num_classes-1]
+        targets = torch.clamp(targets.long(), 0, num_classes - 1)
+        
         # One-hot encode targets
-        targets_one_hot = F.one_hot(targets, num_classes).permute(0, 4, 1, 2, 3).float()
+        targets_one_hot = F.one_hot(targets, num_classes)
+        
+        # Permute based on dimensionality (2D or 3D)
+        if targets_one_hot.dim() == 4:  # 2D: (B, H, W, C)
+            targets_one_hot = targets_one_hot.permute(0, 3, 1, 2).float()
+        else:  # 3D: (B, D, H, W, C)
+            targets_one_hot = targets_one_hot.permute(0, 4, 1, 2, 3).float()
         
         # Compute Dice coefficient per class
         dice_scores = []
