@@ -60,8 +60,59 @@ python evaluate.py
 ## 📁 Structure
 
 ```
-├── config.py           # Hyperparameters
+├── config.py           # Hyperparameters (optimized for speed)
 ├── train.py            # Training (PyTorch Lightning)
+├── evaluate.py         # Missing modality evaluation
+├── requirements.txt    # Dependencies
+├── data/
+│   ├── dataset.py      # BraTS dataloader
+│   └── __init__.py
+├── models/
+│   ├── encoders.py     # Modality + shared encoders
+│   ├── attention_fusion.py  # Cross-modal fusion
+│   ├── synthesis.py    # Conditional diffusion
+│   ├── segmentation.py # Decoder
+│   ├── classification.py    # Grade classifier
+│   ├── unified_model.py     # End-to-end model
+│   └── __init__.py
+├── losses/
+│   ├── combined_loss.py     # Multi-task loss
+│   └── __init__.py
+└── utils/
+    ├── metrics.py      # Dice, HD95, accuracy
+    └── __init__.py
+```
+
+## 🎯 Key Features
+
+- **Modality Encoders**: Lightweight 3D CNNs per modality
+- **Diffusion Synthesis**: DDPM with DDIM sampling (100 steps for speed)
+- **Uncertainty**: Pixel-wise variance from synthesis
+- **Fusion**: Attention with uncertainty-aware gating
+- **Losses**: Dice + CE (seg) + Focal (cls) + MSE (synthesis) + uncertainty + attention penalties
+- **Metrics**: Dice, HD95, accuracy, precision, recall, F1
+- **Optimized**: 96³ images, reduced diffusion steps for faster training
+
+## 🔧 Configuration
+
+Edit [`config.py`](file:///c:/antigravity%20works/config.py) to modify:
+- **Performance**: `image_size` (96³), `diffusion_steps` (100), `batch_size` (2)
+- **Loss weights**: λ_seg, λ_cls, λ_synthesis, etc.
+- **Model dimensions**: channels, heads, fusion_dim
+- **Training**: LR, epochs, scheduler
+
+## 🚀 Quick Start
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Start training
+python train.py
+
+# Evaluate on missing modalities
+python evaluate.py
+```
 ├── evaluate.py         # Missing modality evaluation
 ├── data/
 │   ├── dataset.py      # BraTS dataloader
