@@ -36,21 +36,25 @@ class BrainTumorLightningModule(pl.LightningModule):
     
     def training_step(self, batch, batch_idx):
         """Training step - handle batched slices."""
-        # batch contains multiple slices from same patient
-        # modalities: (1, num_slices, 4, H, W)
-        # We need to process as (num_slices, 4, H, W)
+        # Dataset returns: (batch_size=1, num_slices, 4, H, W)
+        # Need to reshape to: (num_slices, 4, H, W) for 2D model
         
-        modalities = batch["modalities"].squeeze(0)  # (num_slices, 4, H, W)
+        modalities = batch["modalities"]  # (1, num_slices, 4, H, W)
+        batch_size = modalities.shape[0]
+        num_slices = modalities.shape[1]
+        
+        # Reshape: (1, num_slices, 4, H, W) -> (num_slices, 4, H, W)
+        modalities = modalities.view(-1, *modalities.shape[2:])  # (num_slices, 4, H, W)
+        
         modality_mask = batch["modality_mask"]  # (4,)
-        seg_targets = batch["seg"].squeeze(0)  # (num_slices, H, W)
+        seg_targets = batch["seg"].view(-1, *batch["seg"].shape[2:])  # (num_slices, H, W)
         grade_targets = batch["grade"]  # scalar
         
         # Forward pass
         outputs = self(modalities, modality_mask)
         
         # Expand grade for all slices
-        num_slices = modalities.shape[0]
-        grade_targets_expanded = grade_targets.expand(num_slices)
+        grade_targets_expanded = grade_targets.repeat(num_slices * batch_size)
         
         # Compute loss
         total_loss, loss_dict = self.criterion(
@@ -77,17 +81,21 @@ class BrainTumorLightningModule(pl.LightningModule):
     
     def validation_step(self, batch, batch_idx):
         """Validation step - handle batched slices."""
-        modalities = batch["modalities"].squeeze(0)  # (num_slices, 4, H, W)
+        modalities = batch["modalities"]  # (1, num_slices, 4, H, W)
+        batch_size = modalities.shape[0]
+        num_slices = modalities.shape[1]
+        
+        # Reshape
+        modalities = modalities.view(-1, *modalities.shape[2:])  # (num_slices, 4, H, W)
         modality_mask = batch["modality_mask"]  # (4,)
-        seg_targets = batch["seg"].squeeze(0)  # (num_slices, H, W)
+        seg_targets = batch["seg"].view(-1, *batch["seg"].shape[2:])  # (num_slices, H, W)
         grade_targets = batch["grade"]  # scalar
         
         # Forward pass
         outputs = self(modalities, modality_mask)
         
         # Expand grade
-        num_slices = modalities.shape[0]
-        grade_targets_expanded = grade_targets.expand(num_slices)
+        grade_targets_expanded = grade_targets.repeat(num_slices * batch_size)
         
         # Compute loss
         total_loss, loss_dict = self.criterion(
