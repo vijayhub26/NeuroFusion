@@ -105,7 +105,7 @@ class BraTSDataset2D(Dataset):
         
         return data
     
-    def _extract_2d_slice(self, volume: np.ndarray, slice_idx: int) -> np.ndarray:
+    def _extract_2d_slice(self, volume: np.ndarray, slice_idx: int, is_seg: bool = False) -> np.ndarray:
         """Extract 2D slice from 3D volume."""
         if self.axis == 0:
             slice_2d = volume[slice_idx, :, :]
@@ -118,13 +118,25 @@ class BraTSDataset2D(Dataset):
         if slice_2d.shape != self.image_size:
             import torch.nn.functional as F
             slice_tensor = torch.from_numpy(slice_2d).unsqueeze(0).unsqueeze(0)
-            resized = F.interpolate(
-                slice_tensor,
-                size=self.image_size,
-                mode='bilinear',
-                align_corners=False
-            )
-            slice_2d = resized.squeeze().numpy()
+            
+            if is_seg:
+                # Use nearest neighbor for segmentation masks
+                slice_tensor = slice_tensor.float()  # Convert to float for interpolation
+                resized = F.interpolate(
+                    slice_tensor,
+                    size=self.image_size,
+                    mode='nearest'
+                )
+                slice_2d = resized.squeeze().numpy().astype(np.int64)
+            else:
+                # Use bilinear for modalities
+                resized = F.interpolate(
+                    slice_tensor,
+                    size=self.image_size,
+                    mode='bilinear',
+                    align_corners=False
+                )
+                slice_2d = resized.squeeze().numpy()
         
         return slice_2d
     
@@ -187,7 +199,7 @@ class BraTSDataset2D(Dataset):
             modality_slices.append(np.stack(mod_slice_stack, axis=0))  # (4, H, W)
             
             # Extract seg slice
-            seg_2d = self._extract_2d_slice(seg_volume, slice_idx)
+            seg_2d = self._extract_2d_slice(seg_volume, slice_idx, is_seg=True)
             seg_slices.append(seg_2d)
         
         # Stack all slices: (num_slices, 4, H, W)
