@@ -53,15 +53,22 @@ class BrainTumorLightningModule(pl.LightningModule):
         # Forward pass
         outputs = self(modalities, modality_mask)
         
-        # Expand grade for all slices
-        grade_targets_expanded = grade_targets.repeat(num_slices * batch_size)
+        # Expand grade for all slices (after reshape, batch dimension is gone)
+        actual_batch_size = modalities.shape[0]  # This is num_slices after reshape
+        grade_targets_expanded = grade_targets.repeat(actual_batch_size)
         
         # Debug: Print shapes and values
         if batch_idx == 0:
             print(f"\n[DEBUG] Batch {batch_idx}:")
+            print(f"  Original batch_size from shape: {batch_size}")
+            print(f"  Original num_slices from shape: {num_slices}")
+            print(f"  modalities shape after reshape: {modalities.shape}")
+            print(f"  actual_batch_size (should match modalities.shape[0]): {actual_batch_size}")
+            print(f"  grade_targets original: {grade_targets}, shape: {grade_targets.shape}")
+            print(f"  grade_targets_expanded: {grade_targets_expanded}, shape: {grade_targets_expanded.shape}")
             print(f"  grade_logits shape: {outputs['grade_logits'].shape}")
-            print(f"  grade_targets_expanded shape: {grade_targets_expanded.shape}")
-            print(f"  grade_targets values: {grade_targets_expanded[:5]}")
+            print(f"  seg_logits shape: {outputs['seg_logits'].shape}")
+            print(f"  seg_targets shape: {seg_targets.shape}")
             print(f"  grade_logits num_classes: {outputs['grade_logits'].shape[-1]}")
         
         # Compute loss
@@ -102,8 +109,9 @@ class BrainTumorLightningModule(pl.LightningModule):
         # Forward pass
         outputs = self(modalities, modality_mask)
         
-        # Expand grade
-        grade_targets_expanded = grade_targets.repeat(num_slices * batch_size)
+        # Expand grade (use actual batch size after reshape)
+        actual_batch_size = modalities.shape[0]
+        grade_targets_expanded = grade_targets.repeat(actual_batch_size)
         
         # Compute loss
         total_loss, loss_dict = self.criterion(

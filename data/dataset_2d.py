@@ -220,11 +220,16 @@ class BraTSDataset2D(Dataset):
         # Grade is same for all slices
         grade = torch.tensor(sample["grade"], dtype=torch.long)
         
+        # Calculate binary tumor label per slice
+        # If max value in segmentation slice > 0 (background), then tumor is present
+        has_tumor = (seg_tensor.view(len(slice_indices), -1).max(dim=1)[0] > 0).float()
+        
         return {
             "modalities": modalities_tensor,  # (num_slices, 4, H, W)
             "modality_mask": modality_mask,  # (4,)
             "seg": seg_tensor,  # (num_slices, H, W)
-            "grade": grade,  # scalar
+            "grade": grade,  # scalar (HGG vs LGG for patient)
+            "has_tumor": has_tumor,  # (num_slices,) binary label per slice
             "patient_id": sample["patient_id"],
             "num_slices": len(slice_indices)
         }
