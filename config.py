@@ -19,16 +19,16 @@ class DataConfig:
     modalities: List[str] = None
     num_modalities: int = 4  # T1, T1ce, T2, FLAIR
     
-    # Data dimensions (optimized for speed)
-    image_size: Tuple[int, int, int] = (96, 96, 96)  # (D, H, W) - reduced from 128
+    # Data dimensions (optimized for GTX 1650 4GB VRAM)
+    image_size: Tuple[int, int, int] = (64, 64, 64)  # (D, H, W) - reduced for 4GB GPU
     num_classes: int = 4  # background, necrosis, edema, enhancing tumor
     
     # Classification
     num_grades: int = 2  # LGG (Low Grade), HGG (High Grade)
     
-    # Data loading
-    batch_size: int = 2
-    num_workers: int = 4
+    # Data loading (optimized for limited VRAM)
+    batch_size: int = 1  # Reduced for 4GB GPU
+    num_workers: int = 2  # Reduced for Ryzen 5 4800H
     
     # Missing modality simulation
     missing_prob: float = 0.3  # Probability of randomly masking a modality during training
@@ -41,26 +41,26 @@ class DataConfig:
 @dataclass
 class ModelConfig:
     """Model architecture configuration."""
-    # Modality encoders
-    encoder_channels: List[int] = None
+    # Modality encoders (reduced for 4GB GPU)
+    encoder_channels: List[int] = None  # Will be [16, 32, 64]
     
     # Cross-modal attention fusion
     fusion_dim: int = 256
     num_attention_heads: int = 8
     attention_dropout: float = 0.1
     
-    # Shared encoder backbone (3D U-Net)
-    backbone_channels: List[int] = None
+    # Shared encoder backbone (reduced for 4GB GPU)
+    backbone_channels: List[int] = None  # Will be [32, 64, 128, 256]
     
-    # Diffusion synthesis (optimized for speed)
-    diffusion_steps: int = 100  # Reduced from 1000 for faster training
+    # Diffusion synthesis (optimized for GTX 1650)
+    diffusion_steps: int = 50  # Reduced for 4GB GPU and speed
     diffusion_beta_start: float = 0.0001
     diffusion_beta_end: float = 0.02
     diffusion_schedule: str = "linear"  # or "cosine"
     num_inference_samples: int = 1  # For uncertainty quantification (reduced from 5)
     
-    # Segmentation decoder
-    decoder_channels: List[int] = None
+    # Segmentation decoder (reduced for 4GB GPU)
+    decoder_channels: List[int] = None  # Will be [256, 128, 64, 32]
     
     # Classification head
     classifier_hidden_dim: int = 512
@@ -68,11 +68,11 @@ class ModelConfig:
     
     def __post_init__(self):
         if self.encoder_channels is None:
-            self.encoder_channels = [32, 64, 128]
+            self.encoder_channels = [16, 32, 64]  # Reduced from [32, 64, 128]
         if self.backbone_channels is None:
-            self.backbone_channels = [64, 128, 256, 512]
+            self.backbone_channels = [32, 64, 128, 256]  # Reduced from [64, 128, 256, 512]
         if self.decoder_channels is None:
-            self.decoder_channels = [512, 256, 128, 64]
+            self.decoder_channels = [256, 128, 64, 32]  # Reduced from [512, 256, 128, 64]
 
 
 @dataclass
