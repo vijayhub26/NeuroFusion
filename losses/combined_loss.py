@@ -148,6 +148,9 @@ class CombinedLoss(nn.Module):
         grade_targets: torch.Tensor
     ) -> torch.Tensor:
         """Compute classification loss."""
+        # Clip targets to valid range
+        num_classes = grade_logits.shape[-1]
+        grade_targets = torch.clamp(grade_targets.long(), 0, num_classes - 1)
         return self.cls_loss(grade_logits, grade_targets)
     
     def synthesis_regularization(
