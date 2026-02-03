@@ -11,8 +11,8 @@ from pytorch_lightning.loggers import WandbLogger, TensorBoardLogger
 from torch.utils.data import DataLoader
 
 from config import Config, default_config
-from models import UnifiedBrainTumorModel
-from data import get_brats_dataloaders
+from models import UnifiedBrainTumorModel2D  # Use 2D model
+from data import get_brats_dataloaders_2d  # Use 2D slices
 from losses import CombinedLoss
 from utils.metrics import dice_coefficient, classification_metrics
 
@@ -25,8 +25,8 @@ class BrainTumorLightningModule(pl.LightningModule):
         self.config = config
         self.save_hyperparameters()
         
-        # Model
-        self.model = UnifiedBrainTumorModel(config)
+        # Model (2D version)
+        self.model = UnifiedBrainTumorModel2D(config)
         
         # Loss
         self.criterion = CombinedLoss(config)
@@ -35,18 +35,26 @@ class BrainTumorLightningModule(pl.LightningModule):
         return self.model(modalities, modality_mask, training=self.training)
     
     def training_step(self, batch, batch_idx):
-        """Training step."""
-        modalities = batch["modalities"]
-        modality_mask = batch["modality_mask"]
-        seg_targets = batch["seg"]
-        grade_targets = batch["grade"]
+        """Training step - handle batched slices."""
+        # batch contains multiple slices from same patient
+        # modalities: (1, num_slices, 4, H, W)
+        # We need to process as (num_slices, 4, H, W)
+        
+        modalities = batch["modalities"].squeeze(0)  # (num_slices, 4, H, W)
+        modality_mask = batch["modality_mask"]  # (4,)
+        seg_targets = batch["seg"].squeeze(0)  # (num_slices, H, W)
+        grade_targets = batch["grade"]  # scalar
         
         # Forward pass
         outputs = self(modalities, modality_mask)
         
+        # Expand grade for all slices
+        num_slices = modalities.shape[0]
+        grade_targets_expanded = grade_targets.expand(num_slices)
+        
         # Compute loss
         total_loss, loss_dict = self.criterion(
-            outputs, seg_targets, grade_targets, modalities, modality_mask
+            outputs, seg_targets, grade_targets_expanded, modalities, modality_mask
         )
         
         # Log losses
@@ -68,18 +76,22 @@ class BrainTumorLightningModule(pl.LightningModule):
         return total_loss
     
     def validation_step(self, batch, batch_idx):
-        """Validation step."""
-        modalities = batch["modalities"]
-        modality_mask = batch["modality_mask"]
-        seg_targets = batch["seg"]
-        grade_targets = batch["grade"]
+        """Validation step - handle batched slices."""
+        modalities = batch["modalities"].squeeze(0)  # (num_slices, 4, H, W)
+        modality_mask = batch["modality_mask"]  # (4,)
+        seg_targets = batch["seg"].squeeze(0)  # (num_slices, H, W)
+        grade_targets = batch["grade"]  # scalar
         
         # Forward pass
         outputs = self(modalities, modality_mask)
         
+        # Expand grade
+        num_slices = modalities.shape[0]
+        grade_targets_expanded = grade_targets.expand(num_slices)
+        
         # Compute loss
         total_loss, loss_dict = self.criterion(
-            outputs, seg_targets, grade_targets, modalities, modality_mask
+            outputs, seg_targets, grade_targets_expanded, modalities, modality_mask
         )
         
         # Log losses
@@ -147,13 +159,14 @@ def train(config: Config = None):
     
     # Create data loaders
     print("Loading BraTS dataset...")
-    train_loader, val_loader = get_brats_dataloaders(
+    train_loader, val_loader = get_brats_dataloaders_2d(
         data_root=config.data.data_root,
         batch_size=config.data.batch_size,
         num_workers=config.data.num_workers,
         modalities=config.data.modalities,
         image_size=config.data.image_size,
-        missing_prob=config.data.missing_prob
+        missing_prob=config.data.missing_prob,
+        num_slices_per_scan=config.data.num_slices_per_scan
     )
     
     print(f"Train samples: {len(train_loader.dataset)}")
