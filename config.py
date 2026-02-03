@@ -19,8 +19,8 @@ class DataConfig:
     modalities: List[str] = None
     num_modalities: int = 4  # T1, T1ce, T2, FLAIR
     
-    # Data dimensions (optimized for GTX 1650 4GB VRAM)
-    image_size: Tuple[int, int, int] = (64, 64, 64)  # (D, H, W) - reduced for 4GB GPU
+    # Data dimensions (further reduced for memory constraints)
+    image_size: Tuple[int, int, int] = (48, 48, 48)  # (D, H, W) - reduced to fit in 16GB RAM
     num_classes: int = 4  # background, necrosis, edema, enhancing tumor
     
     # Classification

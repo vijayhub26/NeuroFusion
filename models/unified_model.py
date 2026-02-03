@@ -2,7 +2,7 @@
 Unified model integrating all components:
 - Modality encoders
 - Cross-modal attention fusion
-- Conditional diffusion synthesis
+- GAN-based modality synthesis
 - Shared encoder
 - Segmentation decoder
 - Classification head
@@ -14,7 +14,7 @@ from typing import Dict, List, Tuple, Optional
 
 from models.encoders import ModalityEncoder, SharedEncoder
 from models.attention_fusion import SimpleCrossModalFusion
-from models.synthesis import ConditionalDiffusionSynthesis
+from models.synthesis import GANModalitySynthesis
 from models.segmentation import SegmentationDecoder
 from models.classification import ClassificationHead
 
@@ -49,14 +49,8 @@ class UnifiedBrainTumorModel(nn.Module):
             for _ in range(self.num_modalities)
         ])
         
-        # 2. Conditional diffusion synthesis
-        self.synthesis_network = ConditionalDiffusionSynthesis(
-            num_modalities=self.num_modalities,
-            num_steps=config.model.diffusion_steps,
-            beta_start=config.model.diffusion_beta_start,
-            beta_end=config.model.diffusion_beta_end,
-            model_channels=64
-        )
+        # 2. GAN-based synthesis
+        self.synthesis_network = GANModalitySynthesis(config)
         
         # 3. Cross-modal attention fusion
         self.fusion_module = SimpleCrossModalFusion(
@@ -90,48 +84,22 @@ class UnifiedBrainTumorModel(nn.Module):
         self,
         modalities: torch.Tensor,
         modality_mask: torch.Tensor,
-        num_samples: int = 5
-    ) -> Tuple[torch.Tensor, Dict[int, torch.Tensor]]:
+        num_samples: int = 1
+    ) -> Tuple[torch.Tensor, Dict[int, torch.Tensor], Optional[torch.Tensor]]:
         """
-        Synthesize missing modalities using conditional diffusion.
+        Synthesize missing modalities using GAN.
         
         Args:
             modalities: All modalities (B, num_mods, D, H, W) - missing ones are zeros
             modality_mask: Binary mask (B, num_mods) - 1 if present, 0 if missing
-            num_samples: Number of diffusion samples for uncertainty
+            num_samples: Number of samples for uncertainty (uses dropout)
         
         Returns:
             Complete modalities (with synthesized filled in)
             Uncertainty maps for synthesized modalities
+            Synthesized modalities only (for reconstruction loss)
         """
-        B = modalities.shape[0]
-        synthesized_modalities = modalities.clone()
-        uncertainty_maps = {}
-        
-        for batch_idx in range(B):
-            missing_indices = (modality_mask[batch_idx] == 0).nonzero(as_tuple=True)[0]
-            available_indices = (modality_mask[batch_idx] == 1).nonzero(as_tuple=True)[0]
-            
-            if len(missing_indices) == 0:
-                continue  # No modalities to synthesize
-            
-            # Get available modalities as condition
-            condition = modalities[batch_idx:batch_idx+1, available_indices]  # (1, num_available, D, H, W)
-            
-            # Synthesize each missing modality
-            for missing_idx in missing_indices:
-                # Sample from diffusion model
-                synthesized, uncertainty = self.synthesis_network.sample(
-                    condition_modalities=condition,
-                    num_samples=num_samples,
-                    ddim_steps=50
-                )
-                
-                # Fill in synthesized modality
-                synthesized_modalities[batch_idx, missing_idx] = synthesized[0, 0]
-                uncertainty_maps[missing_idx.item()] = uncertainty[0]  # (1, D, H, W)
-        
-        return synthesized_modalities, uncertainty_maps
+        return self.synthesis_network(modalities, modality_mask, num_samples)
     
     def forward(
         self,
@@ -162,13 +130,14 @@ class UnifiedBrainTumorModel(nn.Module):
         
         if has_missing and not training:
             # During inference, synthesize missing modalities
-            complete_modalities, uncertainty_maps = self.synthesize_missing_modalities(
+            complete_modalities, uncertainty_maps, _ = self.synthesize_missing_modalities(
                 modalities, modality_mask, num_samples=self.config.model.num_inference_samples
             )
         else:
             # During training, use ground truth (simulate missing later in loss)
             complete_modalities = modalities
             uncertainty_maps = {}
+            synthesized_for_loss = None
         
         # Step 2: Encode each modality
         modality_features = {}
@@ -204,51 +173,3 @@ class UnifiedBrainTumorModel(nn.Module):
             "encoded_features": encoded
         }
     
-    def compute_synthesis_loss(
-        self,
-        modalities: torch.Tensor,
-        modality_mask: torch.Tensor
-    ) -> torch.Tensor:
-        """
-        Compute synthesis training loss.
-        Randomly mask modalities and train diffusion to reconstruct.
-        
-        Args:
-            modalities: Ground truth modalities (B, num_mods, D, H, W)
-            modality_mask: Which modalities are actually available
-        
-        Returns:
-            Synthesis loss (MSE on predicted noise)
-        """
-        B = modalities.shape[0]
-        synthesis_loss = 0.0
-        count = 0
-        
-        # For each sample, randomly select a modality to synthesize
-        for batch_idx in range(B):
-            available_indices = (modality_mask[batch_idx] == 1).nonzero(as_tuple=True)[0]
-            
-            if len(available_indices) < 2:
-                continue  # Need at least 2 modalities (1 target, 1+ condition)
-            
-            # Randomly select target modality to synthesize
-            target_idx = available_indices[torch.randint(len(available_indices), (1,))].item()
-            
-            # Use other modalities as condition
-            condition_indices = [idx for idx in available_indices.tolist() if idx != target_idx]
-            
-            target = modalities[batch_idx:batch_idx+1, target_idx:target_idx+1]  # (1, 1, D, H, W)
-            condition = modalities[batch_idx:batch_idx+1, condition_indices]  # (1, C, D, H, W)
-            
-            # Compute diffusion loss
-            predicted_noise, true_noise = self.synthesis_network(
-                target_modality=target,
-                condition_modalities=condition,
-                modality_mask=modality_mask[batch_idx:batch_idx+1]
-            )
-            
-            loss = nn.functional.mse_loss(predicted_noise, true_noise)
-            synthesis_loss += loss
-            count += 1
-        
-        return synthesis_loss / max(count, 1)
