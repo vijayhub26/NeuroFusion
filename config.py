@@ -26,8 +26,8 @@ class DataConfig:
     # Classification
     num_grades: int = 2  # LGG (Low Grade), HGG (High Grade)
     
-    # Data loading (optimized for limited VRAM)
-    batch_size: int = 1  # Reduced for 4GB GPU
+    # Data loading (adjusted for CPU training)
+    batch_size: int = 2  # Can use 2 on CPU (more memory available)
     num_workers: int = 2  # Reduced for Ryzen 5 4800H
     
     # Missing modality simulation
@@ -142,8 +142,8 @@ class Config:
     loss: LossConfig = None
     training: TrainingConfig = None
     
-    # Device
-    device: str = "cuda"
+    # Device (switched to CPU for GTX 1650 4GB constraints)
+    device: str = "cpu"  # Change to "cuda" if you have more VRAM
     num_gpus: int = 1
     
     # Paths
