@@ -39,7 +39,6 @@ ENV/
 # PyTorch
 *.pth
 *.pt
-checkpoints/
 lightning_logs/
 wandb/
 
@@ -55,7 +54,12 @@ data/processed/
 experiments/
 outputs/
 results/
-logs/
+
+# Keep logs folder but ignore everything except checkpoints
+logs/**
+!logs/
+!logs/**/
+!logs/**/*.ckpt
 
 # OS
 .DS_Store

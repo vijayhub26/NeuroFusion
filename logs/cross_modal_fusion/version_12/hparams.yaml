@@ -1,0 +1,81 @@
+config: !!python/object:config.Config
+  checkpoint_dir: checkpoints
+  data: !!python/object:config.DataConfig
+    batch_size: 2
+    data_root: C:\datasets\MRI Data\BraTS2020_Split
+    image_size: !!python/tuple
+    - 128
+    - 128
+    missing_prob: 0.3
+    modalities:
+    - t1
+    - t1ce
+    - t2
+    - flair
+    num_classes: 4
+    num_grades: 2
+    num_modalities: 4
+    num_slices_per_scan: 5
+    num_workers: 2
+    test_dir: C:\datasets\MRI Data\BraTS2020_Split\test
+    train_dir: C:\datasets\MRI Data\BraTS2020_Split\train
+    use_2d_slices: true
+    val_dir: C:\datasets\MRI Data\BraTS2020_Split\val
+  device: cpu
+  log_dir: logs
+  loss: !!python/object:config.LossConfig
+    ce_weight: 0.5
+    dice_weight: 0.5
+    focal_alpha: 0.25
+    focal_gamma: 2.0
+    lambda_attention_reg: 0.01
+    lambda_cls: 0.5
+    lambda_seg: 1.0
+    lambda_synthesis: 0.1
+    lambda_uncertainty: 0.05
+    use_focal_loss: true
+  model: !!python/object:config.ModelConfig
+    attention_dropout: 0.1
+    backbone_channels:
+    - 32
+    - 64
+    - 128
+    - 256
+    classifier_dropout: 0.3
+    classifier_hidden_dim: 512
+    decoder_channels:
+    - 256
+    - 128
+    - 64
+    - 32
+    diffusion_beta_end: 0.02
+    diffusion_beta_start: 0.0001
+    diffusion_schedule: linear
+    diffusion_steps: 50
+    encoder_channels:
+    - 16
+    - 32
+    - 64
+    fusion_dim: 256
+    num_attention_heads: 8
+    num_inference_samples: 1
+  num_gpus: 1
+  output_dir: outputs
+  training: !!python/object:config.TrainingConfig
+    accumulate_grad_batches: 1
+    early_stopping_patience: 20
+    experiment_name: cross_modal_fusion
+    gradient_clip_val: 1.0
+    learning_rate: 0.0001
+    log_every_n_steps: 10
+    max_epochs: 200
+    monitor_metric: val/dice_mean
+    monitor_mode: max
+    optimizer: adamw
+    save_top_k: 3
+    scheduler: cosine
+    seed: 42
+    use_amp: true
+    val_check_interval: 1.0
+    warmup_epochs: 5
+    weight_decay: 1.0e-05
